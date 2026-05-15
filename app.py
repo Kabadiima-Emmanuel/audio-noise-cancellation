@@ -59,6 +59,12 @@ def process_audio():
         method = request.form.get('method', Config.DEFAULT_METHOD)
         freq_min = int(request.form.get('freq_min', Config.DEFAULT_FREQ_MIN))
         freq_max = int(request.form.get('freq_max', Config.DEFAULT_FREQ_MAX))
+        import json as _json
+        notch_filters_raw = request.form.get('notch_filters', '[]')
+        try:
+            notch_regions = _json.loads(notch_filters_raw)
+        except Exception:
+            notch_regions = []
         
         # Validate parameters
         if noise_duration <= 0 or noise_duration > 5:
@@ -83,7 +89,8 @@ def process_audio():
             alpha=spectral_sub_alpha,
             method=method,
             freq_min=freq_min,
-            freq_max=freq_max
+            freq_max=freq_max,
+            notch_regions=notch_regions
         )
         
         # Save output
@@ -111,6 +118,8 @@ def process_audio():
                 'snr_improvement': metadata['snr_improvement'],
                 'waveform_before': metadata['waveform_before'],
                 'waveform_after': metadata['waveform_after'],
+                'spectrum_freqs': metadata['spectrum_freqs'],
+                'spectrum_power': metadata['spectrum_power'],
             }
         }), 200
     

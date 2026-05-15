@@ -394,6 +394,137 @@ body {
     min-width: 250px;
 }
 
+/* Audio Players */
+.audio-players-section {
+    margin: 30px 0;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.audio-players-section h3 {
+    color: #667eea;
+    margin-bottom: 15px;
+}
+
+.audio-player-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.audio-player-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.audio-player-label {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #555;
+    text-align: center;
+}
+
+audio {
+    width: 100%;
+    border-radius: 6px;
+}
+
+@media (max-width: 600px) {
+    .audio-player-grid { grid-template-columns: 1fr; }
+}
+
+/* Spectrum */
+.spectrum-section {
+    margin: 30px 0;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.spectrum-section h3 {
+    color: #667eea;
+    margin-bottom: 8px;
+}
+
+.spectrum-hint {
+    font-size: 0.85em;
+    color: #777;
+    margin-bottom: 14px;
+    line-height: 1.5;
+}
+
+.spectrum-wrap {
+    position: relative;
+    user-select: none;
+}
+
+.spectrum-canvas {
+    width: 100%;
+    height: 180px;
+    border-radius: 8px;
+    display: block;
+    cursor: crosshair;
+}
+
+.spectrum-tooltip {
+    position: absolute;
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    font-size: 0.75em;
+    padding: 4px 8px;
+    border-radius: 4px;
+    pointer-events: none;
+    white-space: nowrap;
+    display: none;
+    z-index: 10;
+}
+
+.notch-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    min-height: 0;
+}
+
+.notch-band {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffeaea;
+    border: 1px solid #f44336;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.82em;
+    color: #c62828;
+    font-weight: 600;
+}
+
+.notch-band button {
+    background: none;
+    border: none;
+    color: #f44336;
+    cursor: pointer;
+    font-size: 1em;
+    line-height: 1;
+    padding: 0 2px;
+}
+
+.notch-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.notch-actions .btn {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 10px 20px;
+}
+
 /* Waveform */
 .waveform-section {
     margin: 30px 0;

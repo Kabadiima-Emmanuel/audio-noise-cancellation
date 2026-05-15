@@ -154,7 +154,7 @@ class AudioProcessor:
         return clean_audio
     
     def process(self, audio_file, noise_duration=1.0, alpha=2.0, method='ensemble',
-               freq_min=300, freq_max=8000):
+               freq_min=300, freq_max=8000, notch_regions=None):
         """
         Main processing method.
         
@@ -190,10 +190,28 @@ class AudioProcessor:
         
         # Normalize output
         clean_audio = normalize_audio(clean_audio, target_loudness=-20.0)
-        
+
+        # Apply user-specified notch filters in frequency domain
+        if notch_regions:
+            stft_c, mag_c, phase_c = self.analyzer.compute_stft(clean_audio)
+            freq_bins = self.analyzer.get_frequency_bins()
+            mag_c = self.filter.apply_notch_filters(mag_c, freq_bins, notch_regions)
+            clean_audio = self.analyzer.inverse_stft(mag_c * np.exp(1j * phase_c))
+            clean_audio = normalize_audio(clean_audio, target_loudness=-20.0)
+
         # Calculate output SNR
         snr_after = estimate_snr(clean_audio, noise_duration, self.sr)
         
+        # Compute frequency spectrum of original audio for visualization
+        _, mag_spec, _ = self.analyzer.compute_stft(audio)
+        mean_mag = np.mean(mag_spec, axis=1)
+        freqs_all = np.fft.rfftfreq(self.fft_size, 1.0 / self.sr)
+        power_db_all = 20 * np.log10(mean_mag + 1e-10)
+        n_spec = 256
+        step = max(1, len(freqs_all) // n_spec)
+        spectrum_freqs = [float(freqs_all[i]) for i in range(0, len(freqs_all), step)][:n_spec]
+        spectrum_power = [float(power_db_all[i]) for i in range(0, len(power_db_all), step)][:n_spec]
+
         # Downsample waveforms to ~800 points for frontend visualization
         waveform_points = 800
         def downsample_waveform(signal_data, n_points):
@@ -216,6 +234,8 @@ class AudioProcessor:
             'snr_improvement': float(snr_after - snr_before),
             'waveform_before': downsample_waveform(audio, waveform_points),
             'waveform_after': downsample_waveform(clean_audio, waveform_points),
+            'spectrum_freqs': spectrum_freqs,
+            'spectrum_power': spectrum_power,
         }
         
         return clean_audio, self.metadata

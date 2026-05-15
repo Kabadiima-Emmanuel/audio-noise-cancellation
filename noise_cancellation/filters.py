@@ -142,6 +142,29 @@ class NoiseFilter:
         filtered_magnitude = scipy_median_filter(magnitude, size=kernel_size)
         return filtered_magnitude
     
+    def apply_notch_filters(self, magnitude, freq_bins, notch_regions):
+        """
+        Apply multiple user-specified notch (band-stop) filters.
+        
+        Args:
+            magnitude: Input magnitude spectrogram
+            freq_bins: Frequency values for each bin
+            notch_regions: List of dicts with 'freq_min' and 'freq_max' keys (Hz)
+            
+        Returns:
+            filtered_magnitude: Notch-filtered magnitude spectrogram
+        """
+        if not notch_regions:
+            return magnitude
+        filtered = magnitude.copy()
+        for region in notch_regions:
+            f_min = float(region.get('freq_min', 0))
+            f_max = float(region.get('freq_max', 0))
+            if f_max > f_min:
+                mask = (freq_bins >= f_min) & (freq_bins <= f_max)
+                filtered[mask, :] *= 0.02  # ~34 dB suppression
+        return filtered
+
     def spectral_gating(self, magnitude, noise_spectrum, threshold_db=40):
         """
         Spectral Gating - suppress low energy components.

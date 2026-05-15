@@ -3,6 +3,11 @@
 // State
 let selectedFile = null;
 const methods = {};
+let originalAudioObjectUrl = null;
+let spectrumData = null;
+let notchBands = [];
+let dragStartX = null;
+let isDragging = false;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
@@ -89,6 +94,8 @@ function handleFileSelect() {
 
     if (file) {
         selectedFile = file;
+        if (originalAudioObjectUrl) URL.revokeObjectURL(originalAudioObjectUrl);
+        originalAudioObjectUrl = URL.createObjectURL(file);
         const fileName = document.getElementById('fileName');
         fileName.textContent = '✅ ' + file.name + ' (' + formatFileSize(file.size) + ')';
         fileName.style.display = 'block';
@@ -124,6 +131,7 @@ async function processAudio() {
         formData.append('method', document.getElementById('method').value);
         formData.append('freq_min', document.getElementById('freqMin').value);
         formData.append('freq_max', document.getElementById('freqMax').value);
+        formData.append('notch_filters', JSON.stringify(notchBands));
 
         // Show progress
         showProgress();
@@ -249,10 +257,16 @@ function showResults(result) {
     document.getElementById('resultsContainer').style.display = 'block';
     document.getElementById('errorContainer').style.display = 'none';
 
-    // Draw waveforms after layout is visible
+    // Init audio players
+    initAudioPlayers(result.download_url);
+
+    // Draw visualizations after layout is visible
     requestAnimationFrame(() => {
         drawWaveform('waveformBefore', metadata.waveform_before, '#667eea');
         drawWaveform('waveformAfter', metadata.waveform_after, '#4caf50');
+        spectrumData = { freqs: metadata.spectrum_freqs, power: metadata.spectrum_power };
+        drawSpectrum(spectrumData.freqs, spectrumData.power, notchBands);
+        setupSpectrumInteraction(spectrumData.freqs, spectrumData.power);
     });
 }
 
@@ -272,6 +286,10 @@ function resetForm() {
     document.getElementById('resultsContainer').style.display = 'none';
     document.getElementById('errorContainer').style.display = 'none';
     selectedFile = null;
+    if (originalAudioObjectUrl) { URL.revokeObjectURL(originalAudioObjectUrl); originalAudioObjectUrl = null; }
+    notchBands = [];
+    spectrumData = null;
+    renderNotchList();
 }
 
 // Preset configurations
@@ -317,4 +335,200 @@ function setPreset(preset) {
         document.getElementById('freqMax').value = config.freq_max;
         document.getElementById('freqMaxValue').textContent = config.freq_max + ' Hz';
     }
+}
+
+// ---- Audio Players ----
+function initAudioPlayers(cleanUrl) {
+    const before = document.getElementById('playerBefore');
+    const after = document.getElementById('playerAfter');
+    if (before && originalAudioObjectUrl) {
+        before.src = originalAudioObjectUrl;
+        before.load();
+    }
+    if (after && cleanUrl) {
+        after.src = cleanUrl;
+        after.load();
+    }
+}
+
+// ---- Frequency Spectrum ----
+
+function freqToX(freq, W, minFreq, maxFreq) {
+    const logMin = Math.log10(Math.max(minFreq, 1));
+    const logMax = Math.log10(Math.max(maxFreq, 2));
+    return ((Math.log10(Math.max(freq, 1)) - logMin) / (logMax - logMin)) * W;
+}
+
+function xToFreq(x, W, minFreq, maxFreq) {
+    const logMin = Math.log10(Math.max(minFreq, 1));
+    const logMax = Math.log10(Math.max(maxFreq, 2));
+    return Math.pow(10, logMin + (x / W) * (logMax - logMin));
+}
+
+function drawSpectrum(freqs, power, notches) {
+    const canvas = document.getElementById('spectrumCanvas');
+    if (!canvas || !freqs || !power) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0) return;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const W = rect.width;
+    const H = rect.height;
+    const padB = 22;
+    const plotH = H - padB;
+    const minFreq = Math.max(freqs[0], 20);
+    const maxFreq = freqs[freqs.length - 1];
+    const minDb = Math.min(...power);
+    const maxDb = Math.max(...power);
+    const dbRange = maxDb - minDb || 1;
+
+    // Background
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, W, H);
+
+    // Notch overlays (drawn behind bars)
+    (notches || []).forEach(n => {
+        const x1 = freqToX(n.freq_min, W, minFreq, maxFreq);
+        const x2 = freqToX(n.freq_max, W, minFreq, maxFreq);
+        ctx.fillStyle = 'rgba(244, 67, 54, 0.22)';
+        ctx.fillRect(x1, 0, x2 - x1, plotH);
+        ctx.strokeStyle = 'rgba(244, 67, 54, 0.6)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x1, 0, x2 - x1, plotH);
+    });
+
+    // Bars
+    for (let i = 0; i < freqs.length - 1; i++) {
+        const x1 = freqToX(freqs[i], W, minFreq, maxFreq);
+        const x2 = freqToX(freqs[i + 1], W, minFreq, maxFreq);
+        const bw = Math.max(x2 - x1, 0.5);
+        const norm = (power[i] - minDb) / dbRange;
+        const barH = norm * plotH;
+        const hue = 260 - norm * 60;
+        ctx.fillStyle = `hsla(${hue}, 75%, ${38 + norm * 28}%, 0.92)`;
+        ctx.fillRect(x1, plotH - barH, bw, barH);
+    }
+
+    // Axis grid + labels
+    const labelFreqs = [50, 100, 200, 500, 1000, 2000, 4000, 8000];
+    ctx.font = `${10}px sans-serif`;
+    ctx.textAlign = 'center';
+    labelFreqs.forEach(f => {
+        if (f < minFreq || f > maxFreq) return;
+        const x = freqToX(f, W, minFreq, maxFreq);
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, plotH); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.fillText(f >= 1000 ? (f / 1000) + 'k' : f, x, H - 5);
+    });
+}
+
+function setupSpectrumInteraction(freqs, power) {
+    const canvas = document.getElementById('spectrumCanvas');
+    const tooltip = document.getElementById('spectrumTooltip');
+    if (!canvas) return;
+
+    const minFreq = Math.max(freqs[0], 20);
+    const maxFreq = freqs[freqs.length - 1];
+
+    canvas.onmousedown = e => {
+        const rect = canvas.getBoundingClientRect();
+        dragStartX = e.clientX - rect.left;
+        isDragging = true;
+        e.preventDefault();
+    };
+
+    canvas.onmousemove = e => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const freq = xToFreq(x, rect.width, minFreq, maxFreq);
+        const label = freq >= 1000 ? (freq / 1000).toFixed(1) + ' kHz' : Math.round(freq) + ' Hz';
+
+        tooltip.style.display = 'block';
+        tooltip.style.left = Math.min(x + 10, rect.width - 80) + 'px';
+        tooltip.style.top = '6px';
+        tooltip.textContent = label;
+
+        if (isDragging && dragStartX !== null) {
+            drawSpectrum(freqs, power, notchBands);
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const padB = 22;
+            const plotH = (canvas.height / dpr) - padB;
+            const selX1 = Math.min(dragStartX, x);
+            const selX2 = Math.max(dragStartX, x);
+            ctx.fillStyle = 'rgba(244, 67, 54, 0.28)';
+            ctx.fillRect(selX1, 0, selX2 - selX1, plotH);
+            ctx.strokeStyle = 'rgba(244, 67, 54, 0.85)';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(selX1, 0, selX2 - selX1, plotH);
+        }
+    };
+
+    canvas.onmouseup = e => {
+        if (!isDragging) return;
+        const rect = canvas.getBoundingClientRect();
+        const endX = e.clientX - rect.left;
+        if (Math.abs(endX - dragStartX) > 4) {
+            const f1 = xToFreq(Math.min(dragStartX, endX), rect.width, minFreq, maxFreq);
+            const f2 = xToFreq(Math.max(dragStartX, endX), rect.width, minFreq, maxFreq);
+            notchBands.push({ freq_min: Math.round(f1), freq_max: Math.round(f2) });
+            renderNotchList();
+        }
+        isDragging = false;
+        dragStartX = null;
+        drawSpectrum(freqs, power, notchBands);
+    };
+
+    canvas.onmouseleave = () => {
+        tooltip.style.display = 'none';
+        if (isDragging) {
+            isDragging = false;
+            dragStartX = null;
+            drawSpectrum(freqs, power, notchBands);
+        }
+    };
+}
+
+// ---- Notch Band Management ----
+
+function renderNotchList() {
+    const list = document.getElementById('notchList');
+    const actions = document.getElementById('notchActions');
+    if (!list || !actions) return;
+
+    list.innerHTML = notchBands.map((b, i) => {
+        const lo = b.freq_min >= 1000 ? (b.freq_min / 1000).toFixed(1) + 'k' : b.freq_min;
+        const hi = b.freq_max >= 1000 ? (b.freq_max / 1000).toFixed(1) + 'k' : b.freq_max;
+        return `<span class="notch-band">${lo} – ${hi} Hz
+            <button onclick="removeNotch(${i})" title="Remove">✕</button>
+        </span>`;
+    }).join('');
+
+    actions.style.display = notchBands.length > 0 ? 'flex' : 'none';
+
+    if (spectrumData) {
+        requestAnimationFrame(() =>
+            drawSpectrum(spectrumData.freqs, spectrumData.power, notchBands)
+        );
+    }
+}
+
+function removeNotch(idx) {
+    notchBands.splice(idx, 1);
+    renderNotchList();
+}
+
+function clearNotches() {
+    notchBands = [];
+    renderNotchList();
+}
+
+function reprocessWithNotches() {
+    processAudio();
 }

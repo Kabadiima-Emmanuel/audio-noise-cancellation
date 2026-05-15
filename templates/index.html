@@ -143,6 +143,21 @@
                     </div>
                 </div>
 
+                <!-- Audio Players -->
+                <div class="audio-players-section">
+                    <h3>Listen & Compare</h3>
+                    <div class="audio-player-grid">
+                        <div class="audio-player-panel">
+                            <p class="audio-player-label">Original (Noisy)</p>
+                            <audio id="playerBefore" controls></audio>
+                        </div>
+                        <div class="audio-player-panel">
+                            <p class="audio-player-label">Cleaned</p>
+                            <audio id="playerAfter" controls></audio>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Waveform Visualizer -->
                 <div class="waveform-section">
                     <h3>Waveform Comparison</h3>
@@ -155,6 +170,21 @@
                             <p class="waveform-label">After — Cleaned</p>
                             <canvas id="waveformAfter" class="waveform-canvas"></canvas>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Frequency Spectrum -->
+                <div class="spectrum-section">
+                    <h3>Frequency Spectrum</h3>
+                    <p class="spectrum-hint">Drag on the chart to select a frequency band to suppress, then click <strong>Reprocess with Notch Filters</strong> to remove it from the audio.</p>
+                    <div class="spectrum-wrap">
+                        <canvas id="spectrumCanvas" class="spectrum-canvas"></canvas>
+                        <div id="spectrumTooltip" class="spectrum-tooltip"></div>
+                    </div>
+                    <div id="notchList" class="notch-list"></div>
+                    <div id="notchActions" class="notch-actions" style="display:none;">
+                        <button class="btn btn-primary" onclick="reprocessWithNotches()">Apply Notch Filters &amp; Reprocess</button>
+                        <button class="btn btn-secondary" onclick="clearNotches()">Clear All Notches</button>
                     </div>
                 </div>
 
