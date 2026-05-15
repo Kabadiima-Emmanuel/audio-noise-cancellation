@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Noise Cancellation - Fourier Based</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🎵 Audio Noise Cancellation</h1>
+                <p>Remove noise from your audio using advanced Fourier analysis</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="upload-section card">
+                <h2>Step 1: Upload Audio</h2>
+                <div id="uploadBox" class="upload-box">
+                    <div class="upload-icon">📁</div>
+                    <p>Drag and drop your audio file here</p>
+                    <p class="upload-subtext">or</p>
+                    <label for="audioFile" class="upload-label">Browse Files</label>
+                    <input type="file" id="audioFile" accept=".wav,.mp3,.flac,.ogg,.m4a" style="display: none;">
+                </div>
+                <div id="fileName" class="file-info" style="display: none;"></div>
+                <p class="format-info">Supported: WAV, MP3, FLAC, OGG, M4A (Max 50MB)</p>
+            </section>
+
+            <!-- Settings Section -->
+            <section class="settings-section card">
+                <h2>Step 2: Configure Settings</h2>
+
+                <!-- Quick Presets -->
+                <div class="presets">
+                    <p class="preset-label">Quick Presets:</p>
+                    <button class="preset-btn" onclick="setPreset('speech')">🎤 Speech</button>
+                    <button class="preset-btn" onclick="setPreset('music')">🎶 Music</button>
+                    <button class="preset-btn" onclick="setPreset('aggressive')">⚡ Aggressive</button>
+                    <button class="preset-btn" onclick="setPreset('gentle')">🌙 Gentle</button>
+                </div>
+
+                <!-- Processing Method -->
+                <div class="setting-group">
+                    <label for="method">Processing Method:</label>
+                    <select id="method">
+                        <option value="ensemble">Ensemble (Recommended)</option>
+                        <option value="spectral">Spectral Subtraction</option>
+                        <option value="wiener">Wiener Filter</option>
+                    </select>
+                    <p id="methodDesc" class="method-desc"></p>
+                </div>
+
+                <!-- Noise Duration -->
+                <div class="setting-group">
+                    <label for="noiseDuration">Noise Duration: <span id="noiseDurationValue">1.0s</span></label>
+                    <input type="range" id="noiseDuration" min="0.1" max="5" step="0.1" value="1.0">
+                    <p class="setting-hint">Duration of noise at the beginning of the audio (seconds)</p>
+                </div>
+
+                <!-- Spectral Subtraction Alpha -->
+                <div class="setting-group">
+                    <label for="spectralAlpha">Noise Reduction Strength: <span id="spectralAlphaValue">2.0</span></label>
+                    <input type="range" id="spectralAlpha" min="0.5" max="5" step="0.1" value="2.0">
+                    <p class="setting-hint">Higher = More aggressive noise removal (1.0-3.0 recommended)</p>
+                </div>
+
+                <!-- Frequency Range -->
+                <div class="setting-group">
+                    <label for="freqMin">Min Frequency: <span id="freqMinValue">300 Hz</span></label>
+                    <input type="range" id="freqMin" min="0" max="5000" step="50" value="300">
+                    <p class="setting-hint">Frequencies below this will be attenuated</p>
+                </div>
+
+                <div class="setting-group">
+                    <label for="freqMax">Max Frequency: <span id="freqMaxValue">8000 Hz</span></label>
+                    <input type="range" id="freqMax" min="5000" max="22050" step="100" value="8000">
+                    <p class="setting-hint">Frequencies above this will be attenuated</p>
+                </div>
+            </section>
+
+            <!-- Processing Section -->
+            <section class="processing-section card">
+                <h2>Step 3: Process Audio</h2>
+                <div class="button-group">
+                    <button id="processBtn" class="btn btn-primary" onclick="processAudio()">🚀 Process Audio</button>
+                    <button class="btn btn-secondary" onclick="resetForm()">🔄 Reset</button>
+                </div>
+            </section>
+
+            <!-- Progress -->
+            <div id="progressContainer" style="display: none;" class="card progress-container">
+                <h3>Processing...</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <p>Analyzing audio and removing noise. Please wait...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsContainer" style="display: none;" class="card results-section">
+                <h2>✅ Processing Complete!</h2>
+                
+                <div class="results-grid">
+                    <div class="result-card">
+                        <div class="result-icon">📊</div>
+                        <div class="result-info">
+                            <p class="result-label">SNR Improvement</p>
+                            <p class="result-value" id="snrImprovement">--</p>
+                            <p class="result-unit">dB</p>
+                        </div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <div class="result-icon">⚙️</div>
+                        <div class="result-info">
+                            <p class="result-label">Method Used</p>
+                            <p class="result-value" id="usedMethod" style="font-size: 0.9em;">--</p>
+                        </div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <div class="result-icon">⏱️</div>
+                        <div class="result-info">
+                            <p class="result-label">Duration</p>
+                            <p class="result-value" id="duration">--</p>
+                            <p class="result-unit">seconds</p>
+                        </div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <div class="result-icon">🔊</div>
+                        <div class="result-info">
+                            <p class="result-label">Sample Rate</p>
+                            <p class="result-value" id="sampleRate">--</p>
+                            <p class="result-unit">kHz</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Metrics -->
+                <div class="metrics-section">
+                    <h3>Detailed Metrics</h3>
+                    <div id="detailedMetrics" class="metrics-grid"></div>
+                </div>
+
+                <!-- Download -->
+                <div class="download-section">
+                    <a id="downloadBtn" href="#" class="btn btn-success">⬇️ Download Cleaned Audio</a>
+                </div>
+            </div>
+
+            <!-- Error Section -->
+            <div id="errorContainer" style="display: none;" class="card error-section">
+                <h3>❌ Error Occurred</h3>
+                <p id="errorMessage"></p>
+                <button class="btn btn-secondary" onclick="resetForm()">Try Again</button>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Audio Noise Cancellation using Fourier Series and Python</p>
+            <p>Advanced signal processing with spectral analysis and filtering</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
