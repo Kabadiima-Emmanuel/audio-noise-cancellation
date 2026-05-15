@@ -194,6 +194,14 @@ class AudioProcessor:
         # Calculate output SNR
         snr_after = estimate_snr(clean_audio, noise_duration, self.sr)
         
+        # Downsample waveforms to ~800 points for frontend visualization
+        waveform_points = 800
+        def downsample_waveform(signal_data, n_points):
+            chunk = max(1, len(signal_data) // n_points)
+            samples = [float(np.max(np.abs(signal_data[i:i+chunk])))
+                       for i in range(0, len(signal_data) - chunk, chunk)]
+            return samples[:n_points]
+
         # Store metadata (cast numpy scalars to native Python types for JSON serialization)
         self.metadata = {
             'duration_seconds': float(len(audio) / self.sr),
@@ -205,7 +213,9 @@ class AudioProcessor:
             'freq_max': int(freq_max),
             'snr_before': float(snr_before),
             'snr_after': float(snr_after),
-            'snr_improvement': float(snr_after - snr_before)
+            'snr_improvement': float(snr_after - snr_before),
+            'waveform_before': downsample_waveform(audio, waveform_points),
+            'waveform_after': downsample_waveform(clean_audio, waveform_points),
         }
         
         return clean_audio, self.metadata

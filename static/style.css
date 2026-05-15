@@ -394,6 +394,52 @@ body {
     min-width: 250px;
 }
 
+/* Waveform */
+.waveform-section {
+    margin: 30px 0;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.waveform-section h3 {
+    color: #667eea;
+    margin-bottom: 15px;
+}
+
+.waveform-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.waveform-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.waveform-label {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #555;
+    text-align: center;
+    letter-spacing: 0.03em;
+}
+
+.waveform-canvas {
+    width: 100%;
+    height: 100px;
+    border-radius: 8px;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .waveform-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Error */
 .error-section {
     border-left: 4px solid #f44336;

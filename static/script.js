@@ -156,6 +156,50 @@ function showProgress() {
     document.getElementById('errorContainer').style.display = 'none';
 }
 
+// Draw waveform onto a canvas element
+function drawWaveform(canvasId, samples, color) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const W = rect.width;
+    const H = rect.height;
+    const mid = H / 2;
+    const peak = Math.max(...samples) || 1;
+
+    // Background
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, W, H);
+
+    // Center line
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, mid);
+    ctx.lineTo(W, mid);
+    ctx.stroke();
+
+    // Gradient fill
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, color + 'cc');
+    grad.addColorStop(0.5, color + 'ff');
+    grad.addColorStop(1, color + 'cc');
+
+    const barW = Math.max(1, W / samples.length);
+
+    ctx.fillStyle = grad;
+    samples.forEach((amp, i) => {
+        const normalized = (amp / peak) * (mid * 0.88);
+        const x = i * barW;
+        ctx.fillRect(x, mid - normalized, Math.max(barW - 0.5, 0.5), normalized * 2);
+    });
+}
+
 // Show results
 function showResults(result) {
     const metadata = result.metadata;
@@ -204,6 +248,12 @@ function showResults(result) {
     document.getElementById('progressContainer').style.display = 'none';
     document.getElementById('resultsContainer').style.display = 'block';
     document.getElementById('errorContainer').style.display = 'none';
+
+    // Draw waveforms after layout is visible
+    requestAnimationFrame(() => {
+        drawWaveform('waveformBefore', metadata.waveform_before, '#667eea');
+        drawWaveform('waveformAfter', metadata.waveform_after, '#4caf50');
+    });
 }
 
 // Show error

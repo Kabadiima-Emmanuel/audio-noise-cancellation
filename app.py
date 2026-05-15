@@ -108,7 +108,9 @@ def process_audio():
                 'freq_max': metadata['freq_max'],
                 'snr_before': metadata['snr_before'],
                 'snr_after': metadata['snr_after'],
-                'snr_improvement': metadata['snr_improvement']
+                'snr_improvement': metadata['snr_improvement'],
+                'waveform_before': metadata['waveform_before'],
+                'waveform_after': metadata['waveform_after'],
             }
         }), 200
     
