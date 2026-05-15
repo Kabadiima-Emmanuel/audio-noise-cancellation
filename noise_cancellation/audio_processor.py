@@ -194,18 +194,18 @@ class AudioProcessor:
         # Calculate output SNR
         snr_after = estimate_snr(clean_audio, noise_duration, self.sr)
         
-        # Store metadata
+        # Store metadata (cast numpy scalars to native Python types for JSON serialization)
         self.metadata = {
-            'duration_seconds': len(audio) / self.sr,
-            'sample_rate': self.sr,
+            'duration_seconds': float(len(audio) / self.sr),
+            'sample_rate': int(self.sr),
             'method': method,
-            'noise_duration': noise_duration,
-            'spectral_sub_alpha': alpha,
-            'freq_min': freq_min,
-            'freq_max': freq_max,
-            'snr_before': snr_before,
-            'snr_after': snr_after,
-            'snr_improvement': snr_after - snr_before
+            'noise_duration': float(noise_duration),
+            'spectral_sub_alpha': float(alpha),
+            'freq_min': int(freq_min),
+            'freq_max': int(freq_max),
+            'snr_before': float(snr_before),
+            'snr_after': float(snr_after),
+            'snr_improvement': float(snr_after - snr_before)
         }
         
         return clean_audio, self.metadata
