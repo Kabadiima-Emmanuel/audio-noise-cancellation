@@ -24,7 +24,7 @@ class FourierAnalyzer:
         self.sr = sr
         self.fft_size = fft_size
         self.hop_length = hop_length
-        self.window = signal.hann(fft_size)
+        self.window = signal.windows.hann(fft_size)
     
     def compute_stft(self, audio):
         """
