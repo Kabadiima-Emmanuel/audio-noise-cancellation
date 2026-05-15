@@ -72,15 +72,14 @@ class NoiseFilter:
         Returns:
             filtered_magnitude: Bandpass filtered magnitude spectrogram
         """
-        # Create frequency mask
+        # Create frequency mask (1D over frequency bins)
         mask = (freq_bins >= freq_min) & (freq_bins <= freq_max)
-        mask = mask[:, np.newaxis]
         
         # Apply smooth transition at edges
         filtered_magnitude = magnitude.copy()
         
-        # Attenuation outside frequency range
-        filtered_magnitude[~mask] *= 0.1
+        # Attenuation outside frequency range (index rows only)
+        filtered_magnitude[~mask, :] *= 0.1
         
         return filtered_magnitude
     
